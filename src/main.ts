@@ -1,4 +1,4 @@
-import {vec2, vec3} from 'gl-matrix';
+import {vec2, vec3, vec4} from 'gl-matrix';
 import * as Stats from 'stats-js';
 import * as DAT from 'dat-gui';
 import Square from './geometry/Square';
@@ -12,6 +12,8 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
+  time_slow_down: 30,
+  color: '#fc5d5c'
 };
 
 let square: Square;
@@ -47,6 +49,8 @@ function main() {
 
   // Add controls to the gui
   const gui = new DAT.GUI();
+  gui.add(controls, 'time_slow_down', 10, 100).step(5);
+  gui.addColor(controls, 'color');
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -83,6 +87,14 @@ function main() {
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     processKeyPresses();
+
+    // Pass user inputs to shader
+    var colorInput = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(controls.color);
+    let r: number = parseInt(colorInput[1], 16);
+    let g: number = parseInt(colorInput[2], 16);
+    let b: number = parseInt(colorInput[3], 16);
+    flat.setColor(vec4.fromValues(r, g, b, 1.0));
+
     renderer.render(camera, flat, [
       square,
     ], time);
