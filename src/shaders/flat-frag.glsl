@@ -40,6 +40,7 @@ float differenceOp(float distA, float distB) {
 /** 
  * Signed distance functions (SDF)
  */
+
 float boxSDF(vec3 p, vec3 boxDim) {
     // If d.x < 0, then -1 < p.x < 1, and same logic applies to p.y, p.z
     // So if all components of d are negative, then p is inside the unit cube
@@ -164,24 +165,10 @@ float sceneSDF(vec3 pos) {
 
     res = unionOp(res, capsuleSDF(pos + vec3(-5.2, 5.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm
     res = unionOp(res, capsuleSDF(pos + vec3(-4.8, 5.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm 
- 
-
-
-
-    // float tier1 = differenceOp(roundConeSDF(pos + vec3(-5.0, 1.0 + sin(u_Time / u_SlowFactor), 0.0), 1.5, 1.0, 1.0),
-    //                           boxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / u_SlowFactor), 0.0), vec3(1.2, 1.2, 3.2)));
-    // res = unionOp(res, tier1);
-    //res = unionOp(res, sphereSDF(pos + vec3(-5.0, sin(u_Time / u_SlowFactor), 0.0), 1.0));
-    
-    //float sphereDist = sphereSDF(samplePoint / 1.2) * 1.2;
-    float boxDist = boxSDF(pos + vec3(5.0, sin(u_Time / 15.0), 0.0), vec3(1.0, 1.0, 1.0));
-    //return intersectSDF(cubeDist, sphereDist);
-    //return sphereSDF(samplePoint);
-
-    //return boxDist;
     return res;
 }
 
+// Ray marching
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end) {
     float depth = start;
     for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
@@ -197,6 +184,7 @@ float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, f
     return end;
 }
 
+// Perform a gradient calculation to approximate the normal
 vec3 estimateNormal(vec3 p) {
     return normalize(vec3(
         sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
@@ -205,6 +193,7 @@ vec3 estimateNormal(vec3 p) {
     ));
 }
 
+// Calculate the phong contribution to light intensity
 vec3 phongContribForLight(vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 eye,
                           vec3 lightPos, vec3 lightIntensity) {
     vec3 N = estimateNormal(p);
@@ -232,9 +221,9 @@ vec3 phongIllumination(vec3 k_a, vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 e
     const vec3 ambientLight = 0.6 * vec3(1.0, 1.0, 1.0);
     vec3 color = ambientLight * k_a;
     
-    vec3 light1Pos = vec3(4.0 ,
+    vec3 light1Pos = vec3(-6.0 ,
                           2.0,
-                          -1.0 );
+                          -6.0 );
     vec3 light1Intensity = vec3(0.5, 0.5, 0.5);
     
     color += phongContribForLight(k_d, k_s, alpha, p, eye,
@@ -260,7 +249,7 @@ vec3 castRay() {
   vec3 look = normalize(u_Ref - u_Eye);
   vec3 right = normalize(cross(look, u_Up));
   vec3 up = cross(right, look);
-  float tan_fovy = tan(45.0 / 2.0); // Let FOV = 45 degrees
+  float tan_fovy = tan(45.0 / 2.0); // FOV = 45 degrees
   float aspect = u_Dimensions.x / u_Dimensions.y;
   vec3 V = up * len * tan_fovy;
   vec3 H = right * len * aspect * tan_fovy;
@@ -271,38 +260,66 @@ vec3 castRay() {
   return dir;
 }
 
+vec2 random2( vec2 p , vec2 seed) {
+  return fract(sin(vec2(dot(p + seed, vec2(311.7, 127.1)), dot(p + seed, vec2(269.5, 183.3)))) * 85734.3545);
+}
+
+float worley(float x, float y, float rows, float cols) {
+    float xPos = x * float(rows) / 20.0;
+    float yPos = y * float(cols) / 20.0;
+
+    float minDist = 60.0;
+    vec2 minVec = vec2(0.0, 0.0);
+
+    // Find closest point
+    for (int i = -1; i < 2; i++) {
+        for (int j = -1; j < 2; j++) {
+            vec2 currGrid = vec2(floor(float(xPos)) + float(i), floor(float(yPos)) + float(j));
+            vec2 currNoise = currGrid + random2(currGrid, vec2(2.0, 1.0));
+            float currDist = distance(vec2(xPos, yPos), currNoise);
+            if (currDist <= minDist) {
+                minDist = currDist;
+                minVec = currNoise;
+            }
+        }
+    }
+    return minDist;
+}
 
 void main() {
   // Get ray direction
   vec3 dir = castRay();
 
   // Ray march along ray
+  vec3 colorFromScene = vec3(0, 0, 0);
+  //colorFromScene += vec3(mod(floor(fs_Pos.x/size+sin(time)) + floor(fs_Pos.y*20./size+time),2.)-.8-uv.y);
   float dist = shortestDistanceToSurface(u_Eye, dir, MIN_DIST, MAX_DIST);
 
   // Lambert's Law for shading
   //vec3 normal = estimateNormal(vec3(fs_Pos, 1.0));
   // float diffuseTerm = dot(normalize(normal), normalize(fs_LightVec));
   // diffuseTerm = clamp(diffuseTerm, 0.0, 1.0);
-
+  vec3 color = vec3(0.0, 0.0, 0.0);
   if (dist > MAX_DIST - EPSILON) {
-    // Didn't hit anything
-    out_Col = vec4(0.0, 0.0, 0.0, 1.0);
+    // Procedural polka dot sky
+    float noise = worley(fs_Pos.x, fs_Pos.y, 100.0, 100.0);
+    if (noise < 0.4) {
+      out_Col = vec4(214.0 / 255.0, 201.0 / 255.0, 201.0 / 255.0, 1.0);
+    } else {
+      out_Col = vec4(163.0 / 255.0, 186.0 / 255.0, 195.0 / 255.0, 1.0);
+    }
 		return;
   } else {
-    out_Col = vec4(1.0, 0.0, 0.0, 1.0);
+    // Get the closest point on the surface to the eyepoint along the view ray
+    vec3 pClosest = u_Eye + dist * dir;
+      
+    vec3 K_a = vec3(0.2, 0.2, 0.2);
+    vec3 K_d = vec3(u_Color[0] / 255.0, u_Color[1] / 255.0, u_Color[2] / 255.0);
+    vec3 K_s = vec3(1.0, 1.0, 1.0);
+    float shininess = 10.0;
+      
+    color = phongIllumination(K_a, K_d, K_s, shininess, pClosest, u_Eye);
   }
-    
-  // The closest point on the surface to the eyepoint along the view ray
-  vec3 pClosest = u_Eye + dist * dir;
-    
-  vec3 K_a = vec3(0.2, 0.2, 0.2);
-  vec3 K_d = vec3(u_Color[0] / 255.0, u_Color[1] / 255.0, u_Color[2] / 255.0);
-  vec3 K_s = vec3(1.0, 1.0, 1.0);
-  float shininess = 10.0;
-    
-  vec3 color = phongIllumination(K_a, K_d, K_s, shininess, pClosest, u_Eye);
 
-  //vec3 color = 0.5 * (dir + vec3(1.0, 1.0, 1.0));
   out_Col = vec4(color, 1.0);
-  //out_Col = vec4(0.5 * (fs_Pos + vec2(1.0)), 0.5 * (sin(u_Time * 3.14159 * 0.01) + 1.0), 1.0);
 }
