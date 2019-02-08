@@ -3,7 +3,7 @@ by Annie Su, anniesu1
 
 ![](bothGoops.png)
 ## Inspiration
-I have lately been drawing a lot of creatures and goops and wanted to translate them from 2D paper into 3D digital form.
+I have looking at a lot of creatures and goops and wanted to translate them from 2D paper into 3D digital form.
 ![](aliens.png)
 [here](https://www.instagram.com/p/BsxMPLeAOLa/)
 
