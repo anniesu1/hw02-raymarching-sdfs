@@ -12,7 +12,7 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
-  time_slow_down: 30,
+  time_slow_down: 5,
   color: '#fc5d5c'
 };
 
@@ -49,7 +49,7 @@ function main() {
 
   // Add controls to the gui
   const gui = new DAT.GUI();
-  gui.add(controls, 'time_slow_down', 10, 100).step(5);
+  gui.add(controls, 'time_slow_down', 1, 20).step(1);
   gui.addColor(controls, 'color');
 
   // get canvas and webgl context
@@ -94,6 +94,8 @@ function main() {
     let g: number = parseInt(colorInput[2], 16);
     let b: number = parseInt(colorInput[3], 16);
     flat.setColor(vec4.fromValues(r, g, b, 1.0));
+
+    flat.setSlowFactor(controls.time_slow_down * 10.0);
 
     renderer.render(camera, flat, [
       square,

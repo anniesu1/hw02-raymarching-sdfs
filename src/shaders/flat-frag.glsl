@@ -138,40 +138,40 @@ float sceneSDF(vec3 pos) {
     // Union all the shapes together so all will be rendered together
 
     // Boxular goop
-    float res = unionOp(boxSDF(pos + vec3(5.0, 1.0 + sin(u_Time / 50.0), 0.0), vec3(0.5, 0.5, 0.2)),
-                        boxSDF(pos + vec3(5.0, sin(u_Time / 50.0), 0.0), vec3(1.0, 1.0, 1.0)));
-    res = unionOp(res,sphereSDF(pos + vec3(4.5, 0.75 + sin(u_Time / 50.0), 1.0), 0.1)); // left eye
-    res = unionOp(res,sphereSDF(pos + vec3(5.5, 0.75 + sin(u_Time / 50.0), 1.0), 0.1)); // right eye
-    res = unionOp(res, boxSDF(pos + vec3(5.2, 2.0 + sin(u_Time / 50.0), 0.0), vec3(0.06, 1.5, 0.06))); // right leg
-    res = unionOp(res, boxSDF(pos + vec3(4.8, 2.0 + sin(u_Time / 50.0), 0.0), vec3(0.06, 1.5, 0.06))); // left leg
+    float res = unionOp(boxSDF(pos + vec3(5.0, 1.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.5, 0.5, 0.2)),
+                        boxSDF(pos + vec3(5.0, sin(u_Time / u_SlowFactor), 0.0), vec3(1.0, 1.0, 1.0)));
+    res = unionOp(res,sphereSDF(pos + vec3(4.5, 0.75 + sin(u_Time / u_SlowFactor), 1.0), 0.1)); // left eye
+    res = unionOp(res,sphereSDF(pos + vec3(5.5, 0.75 + sin(u_Time / u_SlowFactor), 1.0), 0.1)); // right eye
+    res = unionOp(res, boxSDF(pos + vec3(5.2, 2.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.06, 1.5, 0.06))); // right leg
+    res = unionOp(res, boxSDF(pos + vec3(4.8, 2.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.06, 1.5, 0.06))); // left leg
 
     // Circular goop
     // Build top portion of body
-    res = unionOp(res, roundConeSDF(pos + vec3(-5.0, sin(u_Time / 50.0), 0.0), 1.5, 0.2, 2.2)); // head
-    res = unionOp(res, roundBoxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / 50.0), 0.0), vec3(0.30, 0.5, 0.30), 0.2)); // body
-    res = unionOp(res, ellipsoidSDF(pos + vec3(-5.6, 0.5 + sin(u_Time / 50.0), 1.5), vec3(0.1, 0.1, 0.05))); // left eye
-    res = unionOp(res, ellipsoidSDF(pos + vec3(-4.4, 0.5 + sin(u_Time / 50.0), 1.5), vec3(0.1, 0.1, 0.05))); // right eye
-    res = unionOp(res, triPrismSDF(pos + vec3(-5.0, 0.6 + sin(u_Time / 50.0), 1.3), vec2(0.15, 0.15))); // nose
-    res = unionOp(res, capsuleSDF(pos + vec3(-4.3, -2.0 + sin(u_Time / 50.0), 0.0), vec3(0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
-    res = unionOp(res, capsuleSDF(pos + vec3(-4.5, -2.2 + sin(u_Time / 50.0), 0.0), vec3(-0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
-    res = unionOp(res, capsuleSDF(pos + vec3(-2.8, -2.5 + sin(u_Time / 50.0), 0.0), vec3(0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
+    res = unionOp(res, roundConeSDF(pos + vec3(-5.0, sin(u_Time / u_SlowFactor), 0.0), 1.5, 0.2, 2.2)); // head
+    res = unionOp(res, roundBoxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.30, 0.5, 0.30), 0.2)); // body
+    res = unionOp(res, ellipsoidSDF(pos + vec3(-5.6, 0.5 + sin(u_Time / u_SlowFactor), 1.5), vec3(0.1, 0.1, 0.05))); // left eye
+    res = unionOp(res, ellipsoidSDF(pos + vec3(-4.4, 0.5 + sin(u_Time / u_SlowFactor), 1.5), vec3(0.1, 0.1, 0.05))); // right eye
+    res = unionOp(res, triPrismSDF(pos + vec3(-5.0, 0.6 + sin(u_Time / u_SlowFactor), 1.3), vec2(0.15, 0.15))); // nose
+    res = unionOp(res, capsuleSDF(pos + vec3(-4.3, -2.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
+    res = unionOp(res, capsuleSDF(pos + vec3(-4.5, -2.2 + sin(u_Time / u_SlowFactor), 0.0), vec3(-0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
+    res = unionOp(res, capsuleSDF(pos + vec3(-2.8, -2.5 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.9,0.,0.), vec3(0.0,0.8,0.0), .1)); // right antler
 
-    res = unionOp(res, capsuleSDF(pos + vec3(-6.55, -1.8 + sin(u_Time / 50.0), 0.0), vec3(-1.9,0.,0.), vec3(0.0,1.4,0.0), .1)); // left antler
-    res = unionOp(res, capsuleSDF(pos + vec3(-6.3, -2.9 + sin(u_Time / 50.0), 0.0), vec3(0.7,0.,0.), vec3(0.0,0.5,0.0), .1)); // left antler
+    res = unionOp(res, capsuleSDF(pos + vec3(-6.55, -1.8 + sin(u_Time / u_SlowFactor), 0.0), vec3(-1.9,0.,0.), vec3(0.0,1.4,0.0), .1)); // left antler
+    res = unionOp(res, capsuleSDF(pos + vec3(-6.3, -2.9 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.7,0.,0.), vec3(0.0,0.5,0.0), .1)); // left antler
 
-    res = unionOp(res, capsuleSDF(pos + vec3(-5.0, 2.4 + sin(u_Time / 50.0), 0.0), vec3(0.9,0.,0.), vec3(0.0,1.8,0.0), .1)); // arm 
-    res = unionOp(res, capsuleSDF(pos + vec3(-5.0, 2.4 + sin(u_Time / 50.0), 0.0), vec3(-0.9,0.,0.), vec3(0.0,1.8,0.0), .1)); // arm
+    res = unionOp(res, capsuleSDF(pos + vec3(-5.0, 2.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.9,0.,0.), vec3(0.0,1.8,0.0), .1)); // arm 
+    res = unionOp(res, capsuleSDF(pos + vec3(-5.0, 2.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(-0.9,0.,0.), vec3(0.0,1.8,0.0), .1)); // arm
 
-    res = unionOp(res, capsuleSDF(pos + vec3(-5.2, 5.4 + sin(u_Time / 50.0), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm
-    res = unionOp(res, capsuleSDF(pos + vec3(-4.8, 5.4 + sin(u_Time / 50.0), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm 
+    res = unionOp(res, capsuleSDF(pos + vec3(-5.2, 5.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm
+    res = unionOp(res, capsuleSDF(pos + vec3(-4.8, 5.4 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.0,0.,0.), vec3(0.0,4.8,0.0), .07)); // arm 
  
 
 
 
-    // float tier1 = differenceOp(roundConeSDF(pos + vec3(-5.0, 1.0 + sin(u_Time / 50.0), 0.0), 1.5, 1.0, 1.0),
-    //                           boxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / 50.0), 0.0), vec3(1.2, 1.2, 3.2)));
+    // float tier1 = differenceOp(roundConeSDF(pos + vec3(-5.0, 1.0 + sin(u_Time / u_SlowFactor), 0.0), 1.5, 1.0, 1.0),
+    //                           boxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / u_SlowFactor), 0.0), vec3(1.2, 1.2, 3.2)));
     // res = unionOp(res, tier1);
-    //res = unionOp(res, sphereSDF(pos + vec3(-5.0, sin(u_Time / 50.0), 0.0), 1.0));
+    //res = unionOp(res, sphereSDF(pos + vec3(-5.0, sin(u_Time / u_SlowFactor), 0.0), 1.0));
     
     //float sphereDist = sphereSDF(samplePoint / 1.2) * 1.2;
     float boxDist = boxSDF(pos + vec3(5.0, sin(u_Time / 15.0), 0.0), vec3(1.0, 1.0, 1.0));
