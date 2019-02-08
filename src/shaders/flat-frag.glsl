@@ -16,11 +16,9 @@ const float MIN_DIST = 0.0;
 const float MAX_DIST = 100.0;
 const float EPSILON = 0.0001;
 
-/**
- * Transformation matrices
- */
-
-
+float triangleWave(float x, float freq, float amplitude) {
+  return abs(mod((x * freq), amplitude) - (0.5 * amplitude));
+}
 
 /**
  * SDF cominbation operations 
@@ -42,18 +40,9 @@ float differenceOp(float distA, float distB) {
  */
 
 float boxSDF(vec3 p, vec3 boxDim) {
-    // If d.x < 0, then -1 < p.x < 1, and same logic applies to p.y, p.z
-    // So if all components of d are negative, then p is inside the unit cube
     vec3 d = abs(p) - boxDim;
-    
-    // Assuming p is inside the cube, how far is it from the surface?
-    // Result will be negative or zero.
     float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
-    
-    // Assuming p is outside the cube, how far is it from the surface?
-    // Result will be positive or zero.
     float outsideDistance = length(max(d, 0.0));
-    
     return insideDistance + outsideDistance;
 }
 
@@ -85,7 +74,6 @@ float ellipsoidSDF( in vec3 p, in vec3 r ) {
     return k0 * (k0 - 1.0) / k1;
 }
 
-// vertical
 float cylinderSDF(vec3 p, vec2 h) {
   vec2 d = abs(vec2(length(p.xz),p.y)) - h;
   return min(max(d.x,d.y),0.0) + length(max(d,0.0));
@@ -139,15 +127,14 @@ float sceneSDF(vec3 pos) {
     // Union all the shapes together so all will be rendered together
 
     // Boxular goop
-    float res = unionOp(boxSDF(pos + vec3(5.0, 1.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.5, 0.5, 0.2)),
-                        boxSDF(pos + vec3(5.0, sin(u_Time / u_SlowFactor), 0.0), vec3(1.0, 1.0, 1.0)));
-    res = unionOp(res,sphereSDF(pos + vec3(4.5, 0.75 + sin(u_Time / u_SlowFactor), 1.0), 0.1)); // left eye
-    res = unionOp(res,sphereSDF(pos + vec3(5.5, 0.75 + sin(u_Time / u_SlowFactor), 1.0), 0.1)); // right eye
-    res = unionOp(res, boxSDF(pos + vec3(5.2, 2.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.06, 1.5, 0.06))); // right leg
-    res = unionOp(res, boxSDF(pos + vec3(4.8, 2.0 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.06, 1.5, 0.06))); // left leg
+    float res = unionOp(boxSDF(pos + vec3(5.0, 1.0 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.0), vec3(0.5, 0.5, 0.2)),
+                        boxSDF(pos + vec3(5.0, triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.0), vec3(1.0, 1.0, 1.0)));
+    res = unionOp(res,sphereSDF(pos + vec3(4.5, 0.75 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 1.0), 0.1)); // left eye
+    res = unionOp(res,sphereSDF(pos + vec3(5.5, 0.75 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 1.0), 0.1)); // right eye
+    res = unionOp(res, boxSDF(pos + vec3(5.2, 2.0 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.0), vec3(0.06, 1.5, 0.06))); // right leg
+    res = unionOp(res, boxSDF(pos + vec3(4.8, 2.0 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.0), vec3(0.06, 1.5, 0.06))); // left leg
 
-    // Circular goop
-    // Build top portion of body
+    // Antler goop
     res = unionOp(res, roundConeSDF(pos + vec3(-5.0, sin(u_Time / u_SlowFactor), 0.0), 1.5, 0.2, 2.2)); // head
     res = unionOp(res, roundBoxSDF(pos + vec3(-5.0, 1.8 + sin(u_Time / u_SlowFactor), 0.0), vec3(0.30, 0.5, 0.30), 0.2)); // body
     res = unionOp(res, ellipsoidSDF(pos + vec3(-5.6, 0.5 + sin(u_Time / u_SlowFactor), 1.5), vec3(0.1, 0.1, 0.05))); // left eye
@@ -168,17 +155,98 @@ float sceneSDF(vec3 pos) {
     return res;
 }
 
+/**
+ * BVH
+ */ 
+bool didIntersectBoundingBox(vec3 dir, vec3 origin, out float dist, vec3 min, vec3 max) { 
+    dir = normalize(dir);
+    float tmin = (min.x - origin.x) / dir.x; 
+    float tmax = (max.x - origin.x) / dir.x; 
+
+    if (tmin > tmax) {
+      // Swap the values
+      float temp = tmin;
+      tmin = tmax;
+      tmax = temp;
+    }
+    float tymin = (min.y - origin.y) / dir.y; 
+    float tymax = (max.y - origin.y) / dir.y; 
+    if (tymin > tymax) {
+      // Swap the values
+      float temp = tymin;
+      tymin = tymax;
+      tymax = temp;
+    }
+ 
+    if ((tmin > tymax) || (tymin > tmax)) {
+      return false; 
+    }
+ 
+    if (tymin > tmin) {
+      tmin = tymin; 
+    }
+ 
+    if (tymax < tmax) {
+      tmax = tymax; 
+    }
+ 
+    float tzmin = (min.z - origin.z) / dir.z; 
+    float tzmax = (max.z - origin.z) / dir.z; 
+ 
+    if (tzmin > tzmax) {
+      // Swap the values
+      float temp = tzmin;
+      tzmin = tzmax;
+      tzmax = temp;
+    }
+ 
+    if ((tmin > tzmax) || (tzmin > tmax)) {
+      return false; 
+    }
+ 
+    if (tzmin > tmin) {
+      tmin = tzmin; 
+    } 
+ 
+    if (tzmax < tmax) {
+      tmax = tzmax; 
+    }
+    return true; 
+}
+
+// NOTE: hard-coded values (calculated by hand on paper...)
+bool antlerGoopBoundingBox(vec3 dir, vec3 origin, out float dist) {
+  vec3 min = vec3(-6.5 , -7.9 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), -10.80);
+  vec3 max = vec3(10.5, 10.8 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 10.3);
+  return didIntersectBoundingBox(dir, origin, dist, min, max);
+}
+
+bool boxGoopBoundingBox(vec3 dir, vec3 origin, out float dist) {
+  vec3 center = vec3(5.0, 1.0 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.0);
+  vec3 min = vec3(-10.5, -8.5 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), -0.5);
+  vec3 max = vec3(10.5, 5.0 + triangleWave(u_Time / u_SlowFactor, 1.0, 1.0), 0.5);
+  return didIntersectBoundingBox(dir, origin, dist, min, max);
+}
+
 // Ray marching
 float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end) {
+    // BVH
+    float dist = 0.0;
+    if (!antlerGoopBoundingBox(marchingDirection, eye, dist)) {
+      return 100000.0;
+    }
+    if (!boxGoopBoundingBox(marchingDirection, eye, dist)) {
+      return 100000.0;
+    }
     float depth = start;
     for (int i = 0; i < MAX_MARCHING_STEPS; i++) {
         float dist = sceneSDF(eye + depth * marchingDirection);
         if (dist < EPSILON) {
-			return depth;
+			    return depth;
         }
         depth += dist;
         if (depth >= end) {
-            return end;
+          return end;
         }
     }
     return end;
@@ -186,59 +254,54 @@ float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, f
 
 // Perform a gradient calculation to approximate the normal
 vec3 estimateNormal(vec3 p) {
-    return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
-        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
-    ));
+  return normalize(vec3(
+      sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
+      sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
+      sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
+  ));
 }
 
 // Calculate the phong contribution to light intensity
 vec3 phongContribForLight(vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 eye,
                           vec3 lightPos, vec3 lightIntensity) {
-    vec3 N = estimateNormal(p);
-    vec3 L = normalize(lightPos - p);
-    vec3 V = normalize(eye - p);
-    vec3 R = normalize(reflect(-L, N));
-    
-    float dotLN = dot(L, N);
-    float dotRV = dot(R, V);
-    
-    if (dotLN < 0.0) {
-        // Light not visible from this point on the surface
-        return vec3(0.0, 0.0, 0.0);
-    } 
-    
-    if (dotRV < 0.0) {
-        // Light reflection in opposite direction as viewer, apply only diffuse
-        // component
-        return lightIntensity * (k_d * dotLN);
-    }
-    return lightIntensity * (k_d * dotLN + k_s * pow(dotRV, alpha));
+  vec3 N = estimateNormal(p);
+  vec3 L = normalize(lightPos - p);
+  vec3 V = normalize(eye - p);
+  vec3 R = normalize(reflect(-L, N));
+  
+  float dotLN = dot(L, N);
+  float dotRV = dot(R, V);
+  
+  if (dotLN < 0.0) {
+      // Light not visible from this point on the surface
+      return vec3(0.0, 0.0, 0.0);
+  } 
+  if (dotRV < 0.0) {
+      // Light reflection in opposite direction as viewer, apply only diffuse component
+      return lightIntensity * (k_d * dotLN);
+  }
+  return lightIntensity * (k_d * dotLN + k_s * pow(dotRV, alpha));
 }
 
 vec3 phongIllumination(vec3 k_a, vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 eye) {
-    const vec3 ambientLight = 0.6 * vec3(1.0, 1.0, 1.0);
-    vec3 color = ambientLight * k_a;
-    
-    vec3 light1Pos = vec3(-6.0 ,
-                          2.0,
-                          -6.0 );
-    vec3 light1Intensity = vec3(0.5, 0.5, 0.5);
-    
-    color += phongContribForLight(k_d, k_s, alpha, p, eye,
-                                  light1Pos,
-                                  light1Intensity);
-    
-    vec3 light2Pos = vec3(2.0, 
-                          2.0,
-                          2.0);
-    vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
-    
-    color += phongContribForLight(k_d, k_s, alpha, p, eye,
-                                  light2Pos,
-                                  light2Intensity);    
-    return color;
+  // Add ambient light so scene is not totally dark (scale for more/less)
+  const vec3 ambientLight = 0.6 * vec3(1.0, 1.0, 1.0);
+  vec3 color = ambientLight * k_a;
+  
+  // Add light 1 in front of the reindeer creature
+  vec3 light1Pos = vec3(-6.0, 2.0, -6.0 );
+  vec3 light1Intensity = vec3(0.5, 0.5, 0.5);
+  
+  color += phongContribForLight(k_d, k_s, alpha, p, eye, light1Pos, light1Intensity);
+
+  // Add light 2 in front of the square creature
+  vec3 light2Pos = vec3(2.0, 
+                        2.0,
+                        2.0);
+  vec3 light2Intensity = vec3(0.4, 0.4, 0.4);
+  
+  color += phongContribForLight(k_d, k_s, alpha, p, eye, light2Pos, light2Intensity);    
+  return color;
 }
 
 vec3 castRay() {
@@ -260,6 +323,9 @@ vec3 castRay() {
   return dir;
 }
 
+/**
+ * Noise functions
+ */
 vec2 random2( vec2 p , vec2 seed) {
   return fract(sin(vec2(dot(p + seed, vec2(311.7, 127.1)), dot(p + seed, vec2(269.5, 183.3)))) * 85734.3545);
 }
@@ -292,20 +358,22 @@ void main() {
 
   // Ray march along ray
   vec3 colorFromScene = vec3(0, 0, 0);
-  //colorFromScene += vec3(mod(floor(fs_Pos.x/size+sin(time)) + floor(fs_Pos.y*20./size+time),2.)-.8-uv.y);
   float dist = shortestDistanceToSurface(u_Eye, dir, MIN_DIST, MAX_DIST);
 
   // Lambert's Law for shading
   //vec3 normal = estimateNormal(vec3(fs_Pos, 1.0));
   // float diffuseTerm = dot(normalize(normal), normalize(fs_LightVec));
   // diffuseTerm = clamp(diffuseTerm, 0.0, 1.0);
+
   vec3 color = vec3(0.0, 0.0, 0.0);
   if (dist > MAX_DIST - EPSILON) {
     // Procedural polka dot sky
     float noise = worley(fs_Pos.x, fs_Pos.y, 100.0, 100.0);
     if (noise < 0.4) {
+      // Polka dot
       out_Col = vec4(214.0 / 255.0, 201.0 / 255.0, 201.0 / 255.0, 1.0);
     } else {
+      // Cloud
       out_Col = vec4(163.0 / 255.0, 186.0 / 255.0, 195.0 / 255.0, 1.0);
     }
 		return;
