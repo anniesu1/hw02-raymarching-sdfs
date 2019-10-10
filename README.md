@@ -36,4 +36,4 @@ blue or pink if it is within a certain threshold.
 
 
 ## Link to github.io Demo
-https://anniesu1.github.io/hw02-raymarching-sdfs/
+https://anniesu1.github.io/raymarching-sdfs/
